@@ -1,12 +1,14 @@
 {
   "name": "surreal-chat-app",
   "scripts": {
+    "prepare": "panda codegen",
     "dev": "solid-start dev",
     "build": "solid-start build",
     "start": "solid-start start"
   },
   "type": "module",
   "devDependencies": {
+    "@pandacss/dev": "^0.18.0",
     "@types/node": "^18.17.5",
     "esbuild": "^0.14.54",
     "postcss": "^8.4.28",
