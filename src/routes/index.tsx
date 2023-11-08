@@ -1,5 +1,5 @@
 import { Match, Switch, createSignal } from "solid-js";
-import { A } from "solid-start";
+import { A, useNavigate } from "solid-start";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -8,6 +8,7 @@ import { css } from "~/styled-system/css";
 
 export default function Home() {
   const [name, setName] = createSignal("")
+  const navigate=useNavigate()
   return (
     <main class={css({
       width: "100vw",
@@ -26,13 +27,8 @@ export default function Home() {
 
         </Card.Body>
         <Card.Footer>
-          <Button {...name() === "" ? { disabled: true } : { asChild: true }}>
-            <Switch>
-              <Match when={name() === ""}>go</Match>
-              <Match when={name() !== ""}>
-                <A href={`/chat/${name()}`}>go</A>
-              </Match>
-            </Switch>
+          <Button onClick={()=>navigate(`/chat/${name()}`)} disabled={name()===""}>
+            go
           </Button>
         </Card.Footer>
       </Card.Root>

@@ -1,5 +1,5 @@
 // @refresh reload
-import { Suspense } from "solid-js";
+import { Suspense, onCleanup } from "solid-js";
 import {
   A,
   Body,
@@ -13,8 +13,18 @@ import {
   Title,
 } from "solid-start";
 import "./root.css";
+import { Surreal } from "surrealdb.js";
+import { createStore } from "solid-js/store";
+
+export const [surreal,setSurreal]=createStore<{db:Surreal,connection:"yet"|"connected"|"error"}>({
+  db:new Surreal(),
+  connection:"yet"
+})
 
 export default function Root() {
+  onCleanup(async()=>[
+    await surreal.db.close()
+  ])
   return (
     <Html lang="ja">
       <Head>
