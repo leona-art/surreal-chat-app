@@ -27,18 +27,18 @@ export default function Room() {
 
     // const [message, setMessage] = createSignal("")
 
-    // let rootRef: HTMLDivElement | undefined;
-    // let headerRef: HTMLDivElement | undefined;
-    // let footerRef: HTMLDivElement | undefined;
-    // const [rootHeight, setRootHeight] = createSignal(0)
-    // const [headerHeight, setHeaderHeight] = createSignal(0)
-    // const [footerHeight, setFooterHeight] = createSignal(0)
+    let rootRef: HTMLDivElement | undefined;
+    let headerRef: HTMLDivElement | undefined;
+    let footerRef: HTMLDivElement | undefined;
+    const [rootHeight, setRootHeight] = createSignal(0)
+    const [headerHeight, setHeaderHeight] = createSignal(0)
+    const [footerHeight, setFooterHeight] = createSignal(0)
 
-    // createEffect(() => {
-    //     console.log("rootHeight", rootHeight())
-    //     console.log("headerHeight", headerHeight())
-    //     console.log("footerHeight", footerHeight())
-    // })
+    createEffect(() => {
+        console.log("rootHeight", rootHeight())
+        console.log("headerHeight", headerHeight())
+        console.log("footerHeight", footerHeight())
+    })
 
     // onMount(async () => {
     //     if (rootRef && headerRef && footerRef) {
@@ -129,34 +129,32 @@ export default function Room() {
         //                             <Text as="span" fontWeight="bold" color={message.own ? "red.10" : undefined} class={css({ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" })}>{message.poster}</Text>
         //                         </Circle>
 
-        //                         <span>
-        //                             <Text as="span">{message.content}</Text>
-        //                         </span>
-        //                         <Show when={message.own}>
-        //                             <Button size="xs" variant="ghost" color="red.11" shadowColor="red.light.12" onClick={async () => {
-        //                                 await db.delete(message.id)
-        //                                 setMessages(messages => messages.filter(msg => msg.id !== message.id))
-        //                             }}>削除</Button>
-        //                         </Show>
-        //                     </Flex>
-        //                 )}
-        //             </For>
-        //         </div>
-        //     </Card.Body>
-        //     <Card.Footer ref={footerRef}>
-        //         <Input value={message()} onInput={e => setMessage(e.target.value)} />
-        //         <Button onClick={async () => {
-        //             await db.query(`
-        //             LET $msg=(CREATE message SET content=$message RETURN id);
-        //             RELATE ($msg.id)->post->($room) SET poster=$poster,created_at=time::now();
-        //             `,
-        //                 { message: message(), room: roomId(), poster: userName() }
-        //             )
-        //         }
-        //         }>送信</Button>
-        //     </Card.Footer>
-        // </Card.Root>
-        <>aaa</>
+                                <span>
+                                    <Text as="span">{message.content}</Text>
+                                </span>
+                                <Show when={message.own}>
+                                    <Button size="xs" variant="ghost" color="red.11" shadowColor="red.light.12" onClick={async () => {
+                                        await surreal.db.delete(message.id)
+                                        setMessages(messages => messages.filter(msg => msg.id !== message.id))
+                                    }}>削除</Button>
+                                </Show>
+                            </Flex>
+                        )}
+                    </For>
+                </div>
+            </Card.Body>
+            <Card.Footer ref={footerRef}>
+                <Input value={message()} onInput={e => setMessage(e.target.value)} />
+                <Button onClick={async () => {
+                    await surreal.db.query(`
+                    LET $msg=(CREATE message SET content=$message RETURN id);
+                    RELATE ($msg.id)->post->($room) SET poster=$poster,created_at=time::now();
+                    `,
+                        { message: message(), room: roomId(), poster: userName() }
+                    )
+                }
+                }>送信</Button>
+            </Card.Footer>
+        </Card.Root>
     )
-
 }
