@@ -54,7 +54,10 @@ export default function SignIn() {
                         </Stack>
                     </Stack>
                 </Card.Body>
-                <Card.Footer>
+                <Card.Footer justifyContent="space-between">
+                    <Button asChild variant="outline">
+                        <A href="/sign-up">Don't have an account?</A>
+                    </Button>
                     <Button onClick={handleSignIn}>
                         Sign in
                     </Button>
