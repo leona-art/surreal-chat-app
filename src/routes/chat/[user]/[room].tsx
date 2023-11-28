@@ -1,5 +1,4 @@
-import { surreal } from "~/root";
-import { For, Show, createEffect, createMemo, createResource, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createResource, createSignal, onCleanup, onMount, useContext } from "solid-js";
 import { useParams } from "solid-start";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -7,6 +6,7 @@ import { Text } from "~/components/ui/text";
 import { css } from "~/styled-system/css";
 import { Circle, Flex } from "~/styled-system/jsx";
 import { Card } from "~/components/ui/card";
+import { SurrealContext } from "~/lib/surreal";
 
 type Message = {
     id: string,
@@ -14,12 +14,13 @@ type Message = {
 }
 
 export default function Room() {
+    const db = useContext(SurrealContext)
     const { room: _room, user: _user } = useParams<{ user: string, room: string }>();
     const userName = createMemo(() => decodeURIComponent(_user))
     const roomId = createMemo(() => decodeURIComponent(_room))
 
     const [room] = createResource(async () => {
-        const [r] = await surreal.db.select<{ id: string, name: string }>(roomId())
+        const [r] = await db.select<{ id: string, name: string }>(roomId())
         return r
     })
     const [messages, setMessages] = createSignal<(Message & { poster: string, createdAt: Date, own?: boolean })[]>([])
@@ -66,7 +67,7 @@ export default function Room() {
         } else {
             console.log("refs is null")
         }
-        const [[{ messages, posters, created }]] = await surreal.db.query(`
+        const [[{ messages, posters, created }]] = await db.query(`
             SELECT 
             <-post<-message.* AS messages,
             <-post.poster AS posters,
@@ -84,7 +85,7 @@ export default function Room() {
         })))
 
         // LIVE SELECTでなぜかパラメータを渡すと正常に動かないのでクエリに直接埋め込む
-        const [uuid] = await surreal.db.query(`
+        const [uuid] = await db.query(`
         LIVE SELECT 
         <-message.* as msg,
         poster,
@@ -94,7 +95,7 @@ export default function Room() {
         `) as [string]
         setUuid(uuid)
 
-        surreal.db.listenLive<{ msg: Message[], poster: string, created_at: string }>(uuid, async ({ action, result, detail }) => {
+        db.listenLive<{ msg: Message[], poster: string, created_at: string }>(uuid, async ({ action, result, detail }) => {
             if (action === "CLOSE") return
             if (action === "CREATE") {
                 setMessages(messages => [...messages, {
@@ -112,7 +113,7 @@ export default function Room() {
         })
     })
     onCleanup(async () => {
-        if (uuid()) await surreal.db.kill(uuid()!)
+        if (uuid()) await db.kill(uuid()!)
     })
 
     return (
@@ -134,7 +135,7 @@ export default function Room() {
                                 </span>
                                 <Show when={message.own}>
                                     <Button size="xs" variant="ghost" color="red.11" shadowColor="red.light.12" onClick={async () => {
-                                        await surreal.db.delete(message.id)
+                                        await db.delete(message.id)
                                         setMessages(messages => messages.filter(msg => msg.id !== message.id))
                                     }}>削除</Button>
                                 </Show>
@@ -146,7 +147,7 @@ export default function Room() {
             <Card.Footer ref={footerRef}>
                 <Input value={message()} onInput={e => setMessage(e.target.value)} />
                 <Button onClick={async () => {
-                    await surreal.db.query(`
+                    await db.query(`
                     LET $msg=(CREATE message SET content=$message RETURN id);
                     RELATE ($msg.id)->post->($room) SET poster=$poster,created_at=time::now();
                     `,

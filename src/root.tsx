@@ -1,5 +1,5 @@
 // @refresh reload
-import { Suspense, onCleanup } from "solid-js";
+import { Suspense, createSignal, onCleanup, onMount } from "solid-js";
 import {
   A,
   Body,
@@ -14,17 +14,20 @@ import {
 } from "solid-start";
 import "./root.css";
 import { Surreal } from "surrealdb.js";
-import { createStore } from "solid-js/store";
 
-export const [surreal,setSurreal]=createStore<{db:Surreal,connection:"yet"|"connected"|"error"}>({
-  db:new Surreal(),
-  connection:"yet"
-})
+const db_ = createSignal<Surreal | null>(null);
+export const db = db_[0];
 
 export default function Root() {
-  onCleanup(async()=>[
-    await surreal.db.close()
-  ])
+  onMount(async () => {
+    const db = new Surreal()
+    await db.connect(import.meta.env.VITE_SURREAL_URL as string)
+    db_[1](db)
+  })
+  onCleanup(async () => {
+    if (!db()) return
+    db()!.close()
+  })
   return (
     <Html lang="ja">
       <Head>
@@ -34,7 +37,7 @@ export default function Root() {
         <Meta name="description" content="Surreal Chat App" />
       </Head>
       <Body>
-        <Suspense>
+        <Suspense fallback={<>Loading...</>}>
           <ErrorBoundary>
             <Routes>
               <FileRoutes />

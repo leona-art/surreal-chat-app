@@ -1,36 +1,41 @@
-import { Accessor, Match, Switch, createContext, createResource, createSignal, onCleanup, onMount } from "solid-js";
-import { createStore } from "solid-js/store";
+import { Match, Switch, createResource, useContext } from "solid-js";
 import { Outlet } from "solid-start";
-import { Surreal } from "surrealdb.js";
-import { Card } from "~/components/ui/card";
-import { surreal, setSurreal } from "~/root";
+import { db as surreal } from "~/root";
 import { css } from "~/styled-system/css";
 
 
 export default function Layout() {
-
-    onMount(async () => {
-        const connect = await surreal.db.connect("ws://localhost:8080/", {
-            namespace: "chat",
-            database: "chat",
-            auth: {
-                username: "root",
-                password: "root"
-            }
-        })
-            .then(() => "connected" as const)
-            .catch(() => "error" as const)
-        setSurreal("connection", connect)
-    })
+    const [isAuthenticated] = createResource(async () => {
+        const db = surreal()
+        if (!db) return false
+        try {
+            // await db.signin({
+            //     namespace: "dev",
+            //     database: "chat",
+            //     scope: "user",
+            //     email: "test@ts.com",
+            //     password: "1111"
+            // })
+            // await db.use({
+            //     namespace: "dev",
+            //     database: "chat"
+            // })
+            return true
+        } catch (e) {
+            return false
+        }
+    }
+    )
     return (
         <main class={css({
             height: "100vh"
         })}>
             <Switch>
-                <Match when={surreal.connection === "yet"}>connecting</Match>
-                <Match when={surreal.connection === "error"}>error</Match>
-                <Match when={surreal.connection === "connected"}>
+                <Match when={isAuthenticated()}>
                     <Outlet />
+                </Match>
+                <Match when={!isAuthenticated()}>
+                    Not Authenticated
                 </Match>
             </Switch>
         </main>
