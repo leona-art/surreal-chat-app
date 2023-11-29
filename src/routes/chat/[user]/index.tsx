@@ -1,20 +1,31 @@
-import { A } from "@solidjs/router"
-import { For, createSignal, onCleanup, onMount, useContext } from "solid-js"
-import { Portal } from "solid-js/web"
+import { onMount } from "solid-js"
+import { useParams } from "solid-start"
 import { Button } from "~/components/ui/button"
-import { Card } from "~/components/ui/card"
-import { Dialog } from "~/components/ui/dialog"
-import { Input } from "~/components/ui/input"
 import { db as surreal } from "~/root"
-import { css } from "~/styled-system/css"
-
-type Room = {
+type Message = {
     id: string,
-    name: string,
-    created_at: Date
+    content: string,
 }
 export default function Index() {
-    return (
-        <div>aaa</div>
-    )
+    const { user } = useParams<{ user: string }>()
+    onMount(async () => {
+        const db = surreal()
+        if (!db) return
+        const [messages] = await db.query<[Message[]]>("SELECT <-posted_in<-message FROM $roomId", { roomId: user })
+        console.log(messages)
+    })
+    return <div>
+        {user}
+        <Button
+            onClick={async () => {
+                const db = surreal()
+                if (!db) return
+                await db.query(
+                    `LET $msg=(CREATE message SET content=$content RETURN id);
+                    RELATE ($auth.id)->posts->($msg.id);
+                    RELATE ($msg.id)->posted_in->($roomId);`,
+                    { content: "hello", roomId: user })
+            }}
+        >add</Button>
+    </div>
 }

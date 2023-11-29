@@ -22,6 +22,7 @@ export default function Root() {
   onMount(async () => {
     const db = new Surreal()
     await db.connect(import.meta.env.VITE_SURREAL_URL as string)
+    .catch(e => {throw new Error(e as string)})
     db_[1](db)
   })
   onCleanup(async () => {

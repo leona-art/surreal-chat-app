@@ -2,9 +2,6 @@ import { Match, Show, Switch, createEffect, createSignal, onMount } from "solid-
 import { A, Navigate, useNavigate } from "solid-start";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { css } from "~/styled-system/css";
 import { db as surreal } from "~/root";
 import { Text } from "~/components/ui/text";
 import { Center } from "~/styled-system/jsx";
@@ -30,10 +27,10 @@ export default function Home() {
     if (!db) return
     try {
       await db.authenticate(token)
-      const [user] = (await db.select<Omit<User, "createdAt"> & { created_at: string }>("user"))
-        .map(e => ({ ...e, createdAt: new Date(e.created_at) })) satisfies User[]
+      const [[user]] = (await db.query<[[Omit<User, "createdAt"> & { created_at: string }]]>("SELECT * FROM $auth;"))
+
       setAuth("authenticated")
-      setUser(user)
+      setUser({ ...user, createdAt: new Date(user.created_at) })
     } catch (e) {
       console.error(e)
       setAuth("not")
@@ -52,7 +49,7 @@ export default function Home() {
       <Switch>
         <Match when={auth() === "authenticated" && user()}>
           {user => (
-            <Card.Root width="md" height="xs">
+            <Card.Root width="md" height="xs" marginY={20}>
               <Card.Header>
                 <Card.Title>Profile</Card.Title>
               </Card.Header>
@@ -65,7 +62,7 @@ export default function Home() {
                   sign out
                 </Button>
                 <Button asChild>
-                  <A href={`/chat/${user().id}`}>go chat</A>
+                  <A href="/chat">go chat</A>
                 </Button>
 
               </Card.Footer>
