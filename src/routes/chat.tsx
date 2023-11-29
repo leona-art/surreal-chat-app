@@ -2,13 +2,9 @@ import { Match, Switch, createEffect, createMemo, createResource, createSignal, 
 import { Navigate, Outlet } from "solid-start";
 import { db as surreal } from "~/root";
 import { css } from "~/styled-system/css";
+import { User, setUser } from "~/lib/user";
 
-type User = {
-    id: string,
-    name: string
-    email: string
-    createdAt: Date
-}
+
 type Raw<T> = Omit<T, "createdAt"> & { created_at: string }
 export default function Layout() {
     const [isAuthenticated, setIsAuthenticated] = createSignal<{ state: "not" } | { state: "authenticated", user: User }>()
@@ -22,21 +18,22 @@ export default function Layout() {
         if (!db) return
         try {
             await db.authenticate(token)
-            const [user] = await db.query<[Raw<User>]>("SELECT * FROM ONLY $auth;")
-            console.log(user)
-            setIsAuthenticated({ state: "authenticated", user: { ...user, createdAt: new Date(user.created_at) } })
+            const [user_] = await db.query<[Raw<User>]>("SELECT * FROM ONLY $auth;")
+            const user = { ...user_, createdAt: new Date(user_.created_at) }
+            setIsAuthenticated({ state: "authenticated", user })
+            setUser("value", user)
         } catch (e) {
             console.error(e)
             setIsAuthenticated({ state: "not" })
         }
     })
-    const authenticated=createMemo(()=>{
-        const auth=isAuthenticated()
-        return auth&&auth.state==="authenticated"&&auth
+    const authenticated = createMemo(() => {
+        const auth = isAuthenticated()
+        return auth && auth.state === "authenticated" && auth
     })
-    const notAuthenticated=createMemo(()=>{
-        const auth=isAuthenticated()
-        return auth&&auth.state==="not"&&auth
+    const notAuthenticated = createMemo(() => {
+        const auth = isAuthenticated()
+        return auth && auth.state === "not" && auth
     })
     return (
         <main class={css({
@@ -44,12 +41,12 @@ export default function Layout() {
         })}>
             <Switch fallback={<>wait..</>}>
                 <Match when={authenticated()}>
-                {auth=>(
-                    <>
-                    {auth().user.name}
-                    <Outlet />
-                    </>
-                )}
+                    {auth => (
+                        <>
+                            {auth().user.name}- {auth().user.id}
+                            <Outlet />
+                        </>
+                    )}
                 </Match>
                 <Match when={notAuthenticated()}>
                     <Navigate href="/sign-in" />
