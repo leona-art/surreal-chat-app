@@ -95,11 +95,7 @@ export default function Index() {
                                             <Button onClick={async () => {
                                                 const db = surreal()
                                                 if (!db) return
-                                                const res = await db.query(`
-                                                LET $joined=(SELECT <-join<-user AS joined FROM ONLY $room).joined;
-                                                IF $result CONTAINSNOT $auth.id{
-                                                    RELATE ($auth.id)->join->$room
-                                                }`, { room: room.id })
+                                                await db.query(`fn::join_room($auth.id,$room);`, { room: room.id })
                                                     .then(() => navigate(`./${room.id}`))
                                             }} >
                                                 in

@@ -4,6 +4,7 @@ import { Text } from "~/components/ui/text";
 
 export default function Index() {
     const { user } = useParams<{ user: string }>();
+    
     return <div class={css({
         display:"flex",
         flexDirection:"column",
