@@ -43,7 +43,6 @@ export default function Layout() {
                 <Match when={authenticated()}>
                     {auth => (
                         <>
-                            {auth().user.name}- {auth().user.id}
                             <Outlet />
                         </>
                     )}
