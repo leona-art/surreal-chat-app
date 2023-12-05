@@ -1,8 +1,11 @@
-import { For, createSignal, onMount } from "solid-js"
+import { For, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useParams } from "solid-start"
 import { Button } from "~/components/ui/button"
+import { Textarea } from "~/components/ui/textarea"
 import { db as surreal } from "~/root"
+import { css } from "~/styled-system/css"
+import { Center, Flex, Stack } from "~/styled-system/jsx"
 type User = {
     id: string,
     name: string,
@@ -23,8 +26,11 @@ function parseMessage(message: Raw<Message>): Message {
     }
 }
 export default function Index() {
-    const { user } = useParams<{ user: string }>()
+    const { user: room } = useParams<{ user: string }>()
     const [messages, setMessages] = createStore<Message[]>([])
+    const list = createMemo(() => [...messages].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()))
+    const [uuid, setUuid] = createSignal<string>()
+    const [message, setMessage] = createSignal("")
     onMount(async () => {
         const db = surreal()
         if (!db) return
@@ -34,37 +40,68 @@ export default function Index() {
             LET $res=SELECT <-posts<-user.* AS user,created_at,content FROM $msg;
             RETURN $res;
         };
-        `, { room: user })
+        `, { room: room })
+        console.log(messages)
         setMessages(messages.map(parseMessage))
 
-        // LIVE SELECTでなぜかパラメータを渡すと正常に動かないのでクエリに直接埋め込む
+        // // LIVE SELECTでなぜかパラメータを渡すと正常に動かないのでクエリに直接埋め込む
         const [uuid] = await db.query<[string]>(`
-        LIVE SELECT <-posted_in<-message FROM $message WHERE ->posted_in->room CONTAINS ${user};
+        LIVE SELECT 
+        <-message.* as msg,
+        <-message<-posts<-user.* as user 
+        FROM posted_in WHERE (->room CONTAINS ${room});
         `)
-        await db.listenLive<Raw<Message>>(uuid, ({ action, result }) => {
+
+        await db.listenLive<{ msg: [Omit<Raw<Message>, "user">], user: [User] }>(uuid, ({ action, result }) => {
             if (action === "CLOSE") return
             if (action === "CREATE") {
-                console.log(result)
+                const { msg: [msg], user } = result
+                setMessages(messages => [...messages, parseMessage({ ...msg, user, })])
                 return
             }
         })
+        setUuid(uuid)
     })
-    return <div>
-        {user}
-        <Button
-            onClick={async () => {
-                const db = surreal()
-                if (!db) return
-                await db.query(
-                    `LET $msg=(CREATE message SET content=$content RETURN id);
-                    RELATE ($auth.id)->posts->($msg.id);
-                    RELATE ($msg.id)->posted_in->($roomId);`,
-                    { content: "hello", roomId: user })
-            }}
-        >add</Button>
+    onCleanup(async () => {
+        const db = surreal()
+        const id = uuid()
+        if (!db || !id) return
+        await db.kill(id)
+    })
+    const sendMessage = async () => {
+        const db = surreal()
+        if (!db) return
+        try {
+            await db.query<[Raw<Message>]>(`
+            BEGIN TRANSACTION;
+            LET $msg=(CREATE message SET content=$content RETURN id);
+            RELATE ($auth.id)->posts->($msg.id);
+            RELATE ($msg.id)->posted_in->($room);
+            COMMIT TRANSACTION;
+            `, { content: message(), room: room })
+            setMessage("")
+        } catch (e) {
+            console.error(e)
+        }
+    }
+    return <Flex direction="column" height="full">
+        <Stack gap={2} overflow="hidden" flexGrow={1}>
+            <For each={list()}>
+                {message => <div>{message.user.name}:{message.content}</div>}
+            </For>
+        </Stack>
+        <Stack position="sticky" bottom={0} gap={0} bg="white" flexShrink={0}>
+            <Textarea borderBottomRadius={0}
+            value={message()} onInput={e => setMessage(e.target.value)} onKeyDown={e => {
+                if (e.key === "Enter"&&e.shiftKey) {
+                    sendMessage()
+                }
+            }} />
 
-        <For each={messages}>
-            {message => <div>{message.user.name}: {message.content}</div>}
-        </For>
-    </div>
+            <Button width="full" disabled={message() === ""} borderTopRadius={0}
+                onClick={sendMessage}
+            >Send</Button>
+        </Stack>
+    </Flex>
 }
+

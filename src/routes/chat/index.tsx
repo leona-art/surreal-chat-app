@@ -14,7 +14,8 @@ type Room = {
     id: string,
     name: string,
     created_at: Date,
-    owner: string[]
+    owner: string[],
+    member: string[],
 }
 export default function Index() {
     const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function Index() {
     onMount(async () => {
         const db = surreal()
         if (!db) return
-        const [rooms] = await await db.query<[Room[]]>("SELECT *,<-(join WHERE owner==true)<-user.id as owner FROM room")
+        const [rooms] = await await db.query<[Room[]]>("SELECT *,<-(join WHERE role=='owner')<-user.id as owner,<-(join WHERE role=='member')<-user.id as member FROM room")
         setRooms(rooms.map(room => ({ ...room, created_at: new Date(room.created_at) })))
 
         const [roomUuid] = await db.live<Room>("room", ({ action, result }) => {
@@ -39,7 +40,7 @@ export default function Index() {
             }
         })
 
-        const [ownerUuid] = await db.query<[string]>("LIVE SELECT in as user,out as room FROM join WHERE owner==true")
+        const [ownerUuid] = await db.query<[string]>(`LIVE SELECT in as user,out as room FROM join WHERE role=='owner';`)
         await db.listenLive<{ user: string, room: string }>(ownerUuid, ({ action, result }) => {
             if (action === "CLOSE") return
             if (action === "CREATE") {
@@ -76,7 +77,8 @@ export default function Index() {
                                 </Button>
                             </Dialog.Trigger>
                             <Portal>
-                                <Dialog.Positioner position={"fixed"} top={0}>
+                                <Dialog.Backdrop/>
+                                <Dialog.Positioner>
                                     <Dialog.Content>
                                         <Dialog.Title>ルーム名:{room.name}- {room.id}</Dialog.Title>
                                         <Show when={isOwner(room)}>
@@ -95,8 +97,12 @@ export default function Index() {
                                             <Button onClick={async () => {
                                                 const db = surreal()
                                                 if (!db) return
-                                                await db.query(`fn::join_room($auth.id,$room);`, { room: room.id })
-                                                    .then(() => navigate(`./${room.id}`))
+                                                try{
+                                                    await db.query(`fn::join_room($auth.id,${room.id});`)
+                                                    navigate(`./${room.id}`)
+                                                }catch(e){
+                                                    console.error(e)
+                                                }
                                             }} >
                                                 in
                                             </Button>
@@ -114,7 +120,8 @@ export default function Index() {
                         <Button>作成</Button>
                     </Dialog.Trigger>
                     <Portal>
-                        <Dialog.Positioner position="fixed" top={0}>
+                        <Dialog.Backdrop />
+                        <Dialog.Positioner>
                             <Dialog.Content>
                                 <Dialog.Title>ルーム作成</Dialog.Title>
                                 <Input value={roomName()} onInput={e => setRoomName(e.target.value)} />
@@ -122,10 +129,15 @@ export default function Index() {
                                     <Button onClick={async () => {
                                         const db = surreal()
                                         if (!db) return
-                                        const [room] = await db.create<Omit<Room, "id" | "owner">>("room", {
-                                            name: roomName(),
-                                            created_at: new Date(),
-                                        })
+                                        try{
+                                            const [room] = await db.create<Omit<Room, "id" | "owner"|"member">>("room", {
+                                                name: roomName(),
+                                                created_at: new Date(),
+                                            })
+                                            console.log(room)
+                                        }catch(e){
+                                            console.error(e)
+                                        }
                                     }} disabled={roomName() === ""}>決定</Button>
                                 </Dialog.CloseTrigger>
                             </Dialog.Content>
