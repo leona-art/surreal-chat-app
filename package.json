@@ -9,7 +9,7 @@
   "type": "module",
   "devDependencies": {
     "@pandacss/dev": "^0.18.0",
-    "@park-ui/panda-preset": "^0.21.0",
+    "@park-ui/panda-preset": "^0.25.0",
     "@types/node": "^18.17.5",
     "esbuild": "^0.14.54",
     "postcss": "^8.4.28",
@@ -18,7 +18,7 @@
     "vite": "^4.4.9"
   },
   "dependencies": {
-    "@ark-ui/solid": "^1.0.0-beta.3",
+    "@ark-ui/solid": "^1.1.0",
     "@solidjs/meta": "^0.29.1",
     "@solidjs/router": "^0.8.3",
     "solid-js": "^1.8.5",
